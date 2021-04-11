@@ -24,8 +24,6 @@ from pdf2image import convert_from_path
 from scipy.ndimage.interpolation import rotate
 from concurrent.futures import ThreadPoolExecutor
 
-from pdb import set_trace as bp
-
 # Rememeber to update PYTHON_PATH
 # export PYTHONPATH=`pwd`:`pwd`/crsd
 from logger import get_logger
