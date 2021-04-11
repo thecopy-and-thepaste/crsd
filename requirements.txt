@@ -2,5 +2,5 @@ opencv-python==4.5.1.48
 
 #  refer to https://pypi.org/project/pdf2image/ to preinstall some requirements
 pdf2image==1.14.0
-scipy==1.6.2
-pandas==1.2.3
+pandas
+scipy

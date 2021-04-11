@@ -24,19 +24,43 @@ from pdf2image import convert_from_path
 from scipy.ndimage.interpolation import rotate
 from concurrent.futures import ThreadPoolExecutor
 
+from pdb import set_trace as bp
+
 # Rememeber to update PYTHON_PATH
 # export PYTHONPATH=`pwd`:`pwd`/crsd
 from logger import get_logger
 
 log = get_logger(__name__)
 
-IMG_WIDTH = 800
+IMG_WIDTH = 1200
 LOCK = threading.Lock()
 MAX_ROTATIONS = 3
 MAX_WORKERS = 3
 
-
 def deskew(image: np.array, delta: int = 1, limit: int = 5):
+    """
+    The deskew process consists on computing histograms and assign to them a score
+    The better the score, the more aligned are the lines
+
+    Parameters
+    ----------
+    image : np.array
+        [Image converted to np.array]
+    delta : int, optional
+        [Step for ranging the possible angles], by default 1
+    limit : int, optional
+        [Max angle to make the deskew process], by default 5
+    
+    Returns
+    -------
+    [Tuple[int, np.array]]
+        [
+            best_angle: int 
+                [Minimum angle found] 
+            rotated: np.array
+                [Img matrix rotated]
+        ]
+    """
     def hist_score(arr, angle):
         # Rotated img matrix
         data = rotate(arr, angle, reshape=False, order=0)
@@ -67,7 +91,29 @@ def deskew(image: np.array, delta: int = 1, limit: int = 5):
     return best_angle, rotated
 
 
+
 def pdf_to_images(pdf_file: Path, dest_path: Path):
+    """
+    Converts a pdf into a folder with images, the process consists on:
+    1. Convert pdf to imahges.
+    2. Deskew images
+    3. Resize to IMG_WIDTH 
+    4. Store to dest_path
+
+    Parameters
+    ----------
+    pdf_file : Path
+        [Filepath pf the pdf document]
+    dest_path : Path
+        [Destination path for images]
+
+    Raises
+    ------
+    ex
+        [Raised if deskew process failed]
+    ex
+        [General exception]
+    """
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
             images = convert_from_path(pdf_file, output_folder=temp_dir)
@@ -75,6 +121,7 @@ def pdf_to_images(pdf_file: Path, dest_path: Path):
 
             with LOCK:
                 images_dest.mkdir(exist_ok=True)
+
 
             for i in range(len(images)):
                 # images contains an array of PIL images
@@ -112,12 +159,26 @@ def pdf_to_images(pdf_file: Path, dest_path: Path):
                     cv2.imwrite(str(image_path), img)
 
     except Exception as ex:
+        log.error(ex)
+        log.error(traceback.print_exc())
         raise ex
 
 
 def run(source_path: Path,
         dest_path: Path = None,
         recursive: bool = True):
+    """
+    It acquires the pdf files to dispatch to the pdf->image converter.
+
+    Parameters
+    ----------
+    source_path : Path
+        [Folder path where pdfs are stored]
+    dest_path : Path, optional
+        [Destination path to store the images], by default None
+    recursive : bool, optional
+        [If true, we get in subfolders also], by default True
+    """
     search_reg = "*.pdf"
     if recursive:
         search_reg = f'**/{search_reg}'
@@ -133,7 +194,7 @@ def run(source_path: Path,
                                 pdf_file=pdf,
                                 dest_path=dest_path)
 
-            except Exception as ex:
+            except Exception:
                 log.error(traceback.print_exc())
                 continue
 
